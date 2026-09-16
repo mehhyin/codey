@@ -9,6 +9,10 @@ import shutil
 import uuid
 import threading
 import webbrowser
+import base64
+import time
+import atexit
+import ast
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlsplit
@@ -21,29 +25,120 @@ SLOTS = threading.BoundedSemaphore(2)
 TIMEOUT = 8
 CREATE_FLAGS = subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0
 RUN_ROOT = ROOT.parent.parent / 'work' / 'pyroom-runs'
+PREVIEW_LOCK = threading.RLock()
+PREVIEW = None
 
 
-def execute(task, code, mode):
+def prepare(task, code, directory, extra=None, mode='run'):
+    for name, content in task['files'].items():
+        target = directory / name
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(content, encoding='utf-8')
+    for name, content in (extra or {}).items():
+        if name not in task.get('editor_files', {}) or name == 'main.py':
+            raise ValueError('Unknown project file')
+        (directory / name).write_text(content, encoding='utf-8')
+    for name, content in task.get('editor_files', {}).items():
+        if name != 'main.py' and name not in (extra or {}):
+            (directory / name).write_text('', encoding='utf-8')
+    (directory / 'main.py').write_text(code, encoding='utf-8')
+    # Grading dependencies belong to the checks, never to learner globals.
+    referenced = {node.id for check in task['checks'] for node in ast.walk(ast.parse(check['code']))
+                  if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Load)}
+    check_imports = []
+    for node in ast.parse(task['starter']).body:
+        if isinstance(node, (ast.Import, ast.ImportFrom)):
+            names = {alias.asname or alias.name.split('.')[0] for alias in node.names}
+            if names & referenced:
+                check_imports.append(ast.unparse(node))
+    (directory / 'request.json').write_text(json.dumps(dict(code=code, mode=mode,
+        setup=task.get('setup', ''), check_imports='\n'.join(check_imports), checks=task['checks'])), encoding='utf-8')
+
+
+def stop_preview():
+    global PREVIEW
+    with PREVIEW_LOCK:
+        if PREVIEW:
+            process, directory = PREVIEW
+            if process.poll() is None:
+                process.terminate()
+                try:
+                    process.wait(timeout=3)
+                except subprocess.TimeoutExpired:
+                    process.kill()
+                    process.wait(timeout=3)
+            if directory.resolve().parent == RUN_ROOT.resolve() and not directory.is_symlink():
+                shutil.rmtree(directory, ignore_errors=True)
+            PREVIEW = None
+
+
+atexit.register(stop_preview)
+
+
+def launch_preview(task, code, extra=None):
+    global PREVIEW
+    with PREVIEW_LOCK:
+        stop_preview()
+        RUN_ROOT.mkdir(parents=True, exist_ok=True)
+        directory = RUN_ROOT / uuid.uuid4().hex
+        directory.mkdir()
+        prepare(task, code, directory, extra)
+        secret = secrets.token_urlsafe(24)
+        with (directory / 'preview-error.log').open('w', encoding='utf-8') as error_log:
+            process = subprocess.Popen([sys.executable, '-I', str(ROOT / 'project_preview.py'), secret],
+                cwd=directory, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=error_log,
+                creationflags=CREATE_FLAGS)
+        PREVIEW = process, directory
+        for _ in range(100):
+            ready = directory / 'ready.json'
+            if ready.exists():
+                try:
+                    result = json.loads(ready.read_text(encoding='utf-8'))
+                    result['url'] += task.get('preview_path', '')
+                    return result
+                except json.JSONDecodeError:
+                    pass
+            if process.poll() is not None:
+                stop_preview()
+                raise ValueError('Preview could not start. Check that your code defines app and runs without errors.')
+            time.sleep(0.1)
+        stop_preview()
+        raise ValueError('Preview startup timed out. Remove app.run() and long-running code, then try again.')
+
+
+def execute(task, code, mode, extra=None):
     RUN_ROOT.mkdir(parents=True, exist_ok=True)
     path = RUN_ROOT / uuid.uuid4().hex
     path.mkdir()
     try:
-        for name, content in task['files'].items():
-            target = path / name
-            target.parent.mkdir(parents=True, exist_ok=True)
-            target.write_text(content, encoding='utf-8')
-        (path / 'main.py').write_text(code, encoding='utf-8')
-        (path / 'request.json').write_text(json.dumps(dict(code=code, mode=mode, checks=task['checks'])), encoding='utf-8')
+        prepare(task, code, path, extra, mode)
+        limit = task.get('time_limit', TIMEOUT)
         try:
             completed = subprocess.run([sys.executable, '-I', str(ROOT / 'worker.py')], cwd=path,
                 stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                timeout=TIMEOUT, creationflags=CREATE_FLAGS)
+                timeout=limit, creationflags=CREATE_FLAGS)
         except subprocess.TimeoutExpired:
-            return dict(output='', error='Time limit reached. Check for an endless loop or a program waiting for input. Each run has 8 seconds.', checks=[], passed=False)
+            return dict(output='', error=f'Time limit reached. Check for an endless loop or a program waiting for input. This run has {limit} seconds.', checks=[], passed=False)
         result_file = path / 'result.json'
         if completed.returncode != 0 or not result_file.exists():
             return dict(output='', error='Python stopped before finishing. Remove exit calls and try again.', checks=[], passed=False)
-        return json.loads(result_file.read_text(encoding='utf-8'))
+        result = json.loads(result_file.read_text(encoding='utf-8'))
+        result['artifacts'] = []
+        allowed = list(dict.fromkeys(result.pop('plots', []) + task.get('exports', [])))
+        total_bytes = 0
+        for name in allowed[:8]:
+            target = path / name
+            if not target.is_file() or target.is_symlink() or target.resolve().parent != path.resolve():
+                continue
+            size = target.stat().st_size
+            if size > 2_000_000 or total_bytes + size > 6_000_000:
+                continue
+            total_bytes += size
+            mime = {'.png':'image/png', '.xlsx':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                '.csv':'text/csv', '.html':'text/html', '.json':'application/json', '.txt':'text/plain'}.get(target.suffix)
+            if mime:
+                result['artifacts'].append({'name': name, 'mime': mime, 'data': base64.b64encode(target.read_bytes()).decode('ascii')})
+        return result
     finally:
         # Delete only this attempt's verified descendant of the practice-run root.
         if path.resolve().parent == RUN_ROOT.resolve() and not path.is_symlink():
@@ -77,7 +172,7 @@ class Handler(BaseHTTPRequestHandler):
             return self.send({'error': 'Local access only.'}, status=403)
         route = urlsplit(self.path).path
         if route == '/api/health':
-            return self.send({'app': 'pyroom', 'version': 1})
+            return self.send({'app': 'pyroom', 'version': 2})
         if route == '/api/course':
             return self.send({'modules': public_course(), 'token': TOKEN})
         assets = {'/': ('index.html', 'text/html; charset=utf-8'), '/app.js': ('app.js', 'text/javascript; charset=utf-8'),
@@ -114,16 +209,27 @@ class Handler(BaseHTTPRequestHandler):
         except (ValueError, TypeError):
             return self.send({'error': 'Invalid request.'}, status=400)
         if self.path == '/api/solution':
-            return self.send({'solution': task['solution'], 'explanation': task['explanation']})
-        if self.path != '/api/execute':
+            return self.send({'solution': task['solution'], 'files': task.get('solution_files', {}), 'explanation': task['explanation']})
+        if self.path not in ('/api/execute', '/api/preview'):
             return self.send({'error': 'Not found.'}, status=404)
         code, mode = data.get('code'), data.get('mode')
+        extra = data.get('files', {})
+        if not isinstance(extra, dict) or any(not isinstance(name, str) or name not in task.get('editor_files', {})
+                or name == 'main.py' or not isinstance(value, str) or len(value) > 50000 for name, value in extra.items()):
+            return self.send({'error': 'Invalid project files.'}, status=400)
         if not isinstance(code, str) or len(code) > 50000 or mode not in ('run', 'submit'):
             return self.send({'error': 'Invalid code or action.'}, status=400)
         if not SLOTS.acquire(blocking=False):
             return self.send({'error': 'Two attempts are already running. Try again shortly.'}, status=429)
         try:
-            result = execute(task, code, mode)
+            if self.path == '/api/preview':
+                if not task.get('web_preview'):
+                    return self.send({'error': 'This lesson does not have a web preview.'}, status=400)
+                try:
+                    return self.send(launch_preview(task, code, extra))
+                except ValueError as exc:
+                    return self.send({'error': str(exc)}, status=400)
+            result = execute(task, code, mode, extra)
             if result.get('passed'):
                 result['explanation'] = task['explanation']
             return self.send(result)
@@ -152,6 +258,7 @@ def main():
         pass
     finally:
         server.server_close()
+        stop_preview()
     return 0
 
 

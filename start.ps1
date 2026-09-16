@@ -21,7 +21,7 @@ try {
         if ($pythonCommand -and $pythonCommand.Source -notlike '*WindowsApps*') {
             $pyroomPython = $pythonCommand.Source
         } else {
-            throw 'Python could not be found. Install Python 3.12 or newer, then install pandas with: python -m pip install pandas'
+            throw 'Python could not be found. Install Python 3.12 or newer, then install the learning libraries with: python -m pip install -r requirements.txt'
         }
     }
     $pyroomWork = Join-Path (Split-Path (Split-Path $pyroomRoot -Parent) -Parent) 'work\pyroom-runtime'

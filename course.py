@@ -1,4 +1,6 @@
 """Editable, executable course content. Each task includes independent behavior checks."""
+import ast
+
 MODULES = []
 
 
@@ -25,7 +27,7 @@ task(m, 'variables', 'Give your data a name',
     'price = 12.50\nquantity = 4\ntotal = price * quantity\nprint(total)',
     [('Store the price and quantity', 'assert price == 12.5 and quantity == 4'), ('Calculate a total of 50', 'assert total == 50'), ('Print the total', 'assert __output__.strip() in ("50", "50.0", "50.00")')],
     ['Multiply the price of one notebook by the number of notebooks.', 'The multiplication operator in Python is *. Store the result in total.', 'Use total = price * quantity, then print(total).'],
-    'The variables describe the inputs. Multiplication produces a number, and print() makes that number visible. Changing quantity now changes the calculation automatically.')
+    'The variables describe the inputs. Multiplication produces a number, and print() makes that number visible. Changing quantity and running the calculation again updates the total.')
 task(m, 'strings', 'Make numbers readable',
     'Strings hold text inside quotes. An f-string starts with f before the opening quote. Expressions inside {braces} are inserted into the text. Use :.2f inside the braces to display two decimal places.',
     'name = "Coffee"\ncost = 4.5\nmessage = f"{name}: {cost:.2f}"\nprint(message)',
@@ -78,9 +80,30 @@ def all_tasks():
 
 
 def public_course():
-    return [dict(id=m['id'], title=m['title'], description=m['description'], project=m['project'], reference=m.get('reference', []),
-        tasks=[{k: v for k, v in t.items() if k not in ('solution', 'checks', 'explanation')} |
-               {'checks': [c['label'] for c in t['checks']]} for t in m['tasks']]) for m in MODULES]
+    return [dict(id=m['id'], title=m['title'], description=m['description'], project=m['project'], reference=m.get('reference', []), track=m.get('track', 'foundations'),
+        tasks=[{k: v for k, v in t.items() if k not in ('solution', 'solution_files', 'setup', 'checks', 'explanation')} |
+               {'checks': [c['label'] for c in t['checks']], **blank_workspace(t)} for t in m['tasks']]) for m in MODULES]
+
+
+def blank_workspace(t):
+    """Keep the editor empty while presenting essential input data in the brief."""
+    inputs, helpers = [], []
+    if t['kind'] != 'debug':
+        for node in ast.parse(t['starter']).body:
+            if isinstance(node, ast.Assign):
+                # Objects such as app or a database connection are implementation,
+                # not input data. Preserve literals and numerical/table constructors.
+                value = node.value
+                literal = isinstance(value, (ast.Constant, ast.List, ast.Tuple, ast.Set, ast.Dict, ast.UnaryOp))
+                constructor = isinstance(value, ast.Call) and isinstance(value.func, ast.Attribute) and value.func.attr in ('array', 'DataFrame')
+                if literal or constructor:
+                    inputs.append({'name': ', '.join(ast.unparse(target) for target in node.targets), 'value': ast.unparse(value)})
+            elif isinstance(node, ast.FunctionDef) and not any(isinstance(child, ast.Pass) for child in ast.walk(node)):
+                helpers.append(ast.get_source_segment(t['starter'], node))
+    return dict(starter='', previous_starter=t['starter'],
+        editor_files={name: '' for name in t.get('editor_files', {})},
+        previous_editor_files=t.get('editor_files', {}), input_data=inputs,
+        provided_helpers=helpers, debug_code=t['starter'] if t['kind']=='debug' else '')
 
 
 from course_extra import extend
@@ -88,3 +111,6 @@ extend(module, task)
 
 from course_practice import expand
 expand(MODULES, task)
+
+from intermediate import extend_intermediate
+extend_intermediate(module, task)

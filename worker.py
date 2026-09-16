@@ -5,6 +5,10 @@ import json
 import sys
 import traceback
 from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from learning_runtime import configure
+
+configure()
 
 
 class BoundedOutput(io.StringIO):
@@ -21,6 +25,7 @@ def main():
     result = {'output': '', 'error': None, 'checks': [], 'passed': False}
     try:
         with contextlib.redirect_stdout(output), contextlib.redirect_stderr(errors):
+            exec(payload.get('setup', ''), {'__name__': '__fixture__'})
             exec(compile(payload['code'], 'main.py', 'exec'), namespace)
     except BaseException as exc:
         if isinstance(exc, SyntaxError):
@@ -34,12 +39,23 @@ def main():
     if output.tell() >= 24000:
         result['output'] += '\n[Output truncated at 24,000 characters.]'
     result['stderr'] = errors.getvalue()
+    # Capture learner-created figures before checks can alter them.
+    result['plots'] = []
+    if 'matplotlib.pyplot' in sys.modules and not result['error']:
+        try:
+            plt = sys.modules['matplotlib.pyplot']
+            for number in plt.get_fignums()[:4]:
+                filename = f'pyroom-plot-{number}.png'
+                plt.figure(number).savefig(filename, dpi=110, bbox_inches='tight')
+                result['plots'].append(filename)
+        except Exception as exc:
+            result['error'] = f'Chart rendering failed: {str(exc)[:1000]}'
     if not result['error'] and payload['mode'] == 'submit':
-        namespace['__output__'] = result['output']
+        check_namespace = dict(namespace, __output__=result['output'], __learner_globals__=namespace)
         for check in payload['checks']:
             try:
                 with contextlib.redirect_stdout(output), contextlib.redirect_stderr(errors):
-                    exec(check['code'], namespace)
+                    exec(payload.get('check_imports', '') + '\n' + check['code'], check_namespace)
                 result['checks'].append({'label': check['label'], 'passed': True})
             except BaseException:
                 result['checks'].append({'label': check['label'], 'passed': False})

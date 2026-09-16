@@ -24,7 +24,7 @@ TOKEN = secrets.token_urlsafe(32)
 SLOTS = threading.BoundedSemaphore(2)
 TIMEOUT = 8
 CREATE_FLAGS = subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0
-RUN_ROOT = ROOT.parent.parent / 'work' / 'pyroom-runs'
+RUN_ROOT = ROOT.parent.parent / 'work' / 'codey-runs'
 PREVIEW_LOCK = threading.RLock()
 PREVIEW = None
 
@@ -172,7 +172,7 @@ class Handler(BaseHTTPRequestHandler):
             return self.send({'error': 'Local access only.'}, status=403)
         route = urlsplit(self.path).path
         if route == '/api/health':
-            return self.send({'app': 'pyroom', 'version': 2})
+            return self.send({'app': 'codey', 'version': 2})
         if route == '/api/course':
             return self.send({'modules': public_course(), 'token': TOKEN})
         assets = {'/': ('index.html', 'text/html; charset=utf-8'), '/app.js': ('app.js', 'text/javascript; charset=utf-8'),
@@ -185,8 +185,8 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self):
         origin = self.headers.get('Origin')
         expected = f'http://{self.headers.get("Host")}'
-        if not self.valid_host() or (origin is not None and origin != expected) or self.headers.get('X-Pyroom-Token') != TOKEN:
-            return self.send({'error': 'Please refresh Pyroom and try again.'}, status=403)
+        if not self.valid_host() or (origin is not None and origin != expected) or self.headers.get('X-Codey-Token') != TOKEN:
+            return self.send({'error': 'Please refresh Codey and try again.'}, status=403)
         if self.headers.get('Content-Type') != 'application/json':
             return self.send({'error': 'Expected JSON.'}, status=415)
         try:
@@ -234,7 +234,7 @@ class Handler(BaseHTTPRequestHandler):
                 result['explanation'] = task['explanation']
             return self.send(result)
         except Exception:
-            return self.send({'error': 'This attempt could not finish. Try again or restart Pyroom.'}, status=500)
+            return self.send({'error': 'This attempt could not finish. Try again or restart Codey.'}, status=500)
         finally:
             SLOTS.release()
 
@@ -247,9 +247,9 @@ def main():
     try:
         server = ThreadingHTTPServer(('127.0.0.1', args.port), Handler)
     except OSError as exc:
-        print(f'Cannot start Pyroom on port {args.port}: {exc}', flush=True)
+        print(f'Cannot start Codey on port {args.port}: {exc}', flush=True)
         return 1
-    print(f'Pyroom is ready at http://127.0.0.1:{args.port}', flush=True)
+    print(f'Codey is ready at http://127.0.0.1:{args.port}', flush=True)
     if args.open:
         webbrowser.open(f'http://127.0.0.1:{args.port}')
     try:

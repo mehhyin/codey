@@ -1,7 +1,14 @@
 'use strict';
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const key = 'pyroom.workspace.v1';
+// Authors mark code explicitly; escape both prose and code before rendering.
+function inlineCode(text) {
+  return String(text).split(/(`[^`\n]+`)/g).map(part =>
+    part.startsWith('`') && part.endsWith('`') && part.length > 2
+      ? `<code class="inline-code">${esc(part.slice(1, -1))}</code>`
+      : esc(part)).join('');
+}
+const key = 'codey.workspace.v1';
 let modules = [], tasks = [], token = '', current, busy = false, state = {drafts:{}, completed:[], hints:{}, last:null};
 let dialogAction = null, activeFile='main.py', activeTrack='foundations';
 state.fileDrafts={};
@@ -21,7 +28,7 @@ $('track-select').onchange=()=>{if(busy)return;persistDraft();const first=module
 $('lesson-content').addEventListener('click',e=>{const b=e.target.closest('[data-review]');if(b)selectTask(b.dataset.review);});
 $('preview-btn').onclick=async()=>{
   if(busy||!current?.web_preview)return;persistDraft();setBusy(true);$('run-status').textContent='Starting your local app…';
-  try{const result=await api('/api/preview',{task:current.id,code:mainCode(),files:projectFiles(),mode:'run'});const url=new URL(result.url);if(url.protocol!=='http:'||url.hostname!=='127.0.0.1')throw new Error('Invalid preview address');$('artifacts').innerHTML=`<div class="preview-card"><h3>Your local app is ready</h3><p><a href="${esc(url.href)}" target="_blank" rel="noopener noreferrer">Open local app ↗</a></p><p>Keep this tab open to edit your code. Starting another preview resets its database. This preview lasts up to one hour, or until Pyroom stops.</p></div>`;$('run-status').textContent='Local preview ready';showTab('artifacts');}
+  try{const result=await api('/api/preview',{task:current.id,code:mainCode(),files:projectFiles(),mode:'run'});const url=new URL(result.url);if(url.protocol!=='http:'||url.hostname!=='127.0.0.1')throw new Error('Invalid preview address');$('artifacts').innerHTML=`<div class="preview-card"><h3>Your local app is ready</h3><p><a href="${esc(url.href)}" target="_blank" rel="noopener noreferrer">Open local app ↗</a></p><p>Keep this tab open to edit your code. Starting another preview resets its database. This preview lasts up to one hour, or until Codey stops.</p></div>`;$('run-status').textContent='Local preview ready';showTab('artifacts');}
   catch(error){$('output').textContent=error.message;$('output').hidden=false;$('console-empty').hidden=true;$('run-status').textContent='Preview needs another look';showTab('console');}
   finally{setBusy(false);}
 };
@@ -40,23 +47,23 @@ function renderNav(){
   const trackTasks=modules.filter(m=>m.track===activeTrack).flatMap(m=>m.tasks);const count=trackTasks.filter(t=>state.completed.includes(t.id)).length,percent=Math.round(count/trackTasks.length*100);
   $('progress-text').textContent=`${count} of ${trackTasks.length} completed`;$('progress-percent').textContent=`${percent}%`;$('progress').value=percent;
 }
-function checksView(checks){$('checks').innerHTML=checks.map(c=>`<div class="check-item"><span class="${c.passed===true?'pass':c.passed===false?'fail':'pending'}">${c.passed===true?'✓':c.passed===false?'×':'○'}</span><span>${esc(c.label)}</span></div>`).join('');}
+function checksView(checks){$('checks').innerHTML=checks.map(c=>`<div class="check-item"><span class="${c.passed===true?'pass':c.passed===false?'fail':'pending'}">${c.passed===true?'✓':c.passed===false?'×':'○'}</span><span>${inlineCode(c.label)}</span></div>`).join('');}
 function showTab(name){for(const n of resultTabs){$(n+'-panel').hidden=n!==name;$(n+'-tab').classList.toggle('active',n===name);$(n+'-tab').setAttribute('aria-selected',String(n===name));$(n+'-tab').tabIndex=n===name?0:-1;}}
-function renderHints(){const count=state.hints[current.id]||0;$('hints').innerHTML=current.hints.slice(0,count).map((h,i)=>`<p><strong>Hint ${i+1}.</strong> ${esc(h)}</p>`).join('');$('hint-counter').textContent=`${count} / ${current.hints.length}`;$('hint-btn').disabled=count>=current.hints.length;$('hint-btn').innerHTML=count>=current.hints.length?'All hints revealed':'Reveal a hint <span>+</span>';}
+function renderHints(){const count=state.hints[current.id]||0;$('hints').innerHTML=current.hints.slice(0,count).map((h,i)=>`<p><strong>Hint ${i+1}.</strong> ${inlineCode(h)}</p>`).join('');$('hint-counter').textContent=`${count} / ${current.hints.length}`;$('hint-btn').disabled=count>=current.hints.length;$('hint-btn').innerHTML=count>=current.hints.length?'All hints revealed':'Reveal a hint <span>+</span>';}
 function teachingNotes(t) {
   if (!t.walkthrough) return '';
-  return `<details class="teaching-notes"><summary>Walk through the example</summary><ol>${t.walkthrough.map(step=>`<li>${esc(step)}</li>`).join('')}</ol></details>`;
+  return `<details class="teaching-notes"><summary>Walk through the example</summary><ol>${t.walkthrough.map(step=>`<li>${inlineCode(step)}</li>`).join('')}</ol></details>`;
 }
 function referencePanel(m, t) {
-  const pitfall=t.pitfall?`<div class="pitfall"><strong>A common mistake</strong><p>${esc(t.pitfall)}</p></div>`:'';
-  return pitfall + `<details class="module-reference"><summary>Keep this reference handy <span>${esc(m.title)}</span></summary><div>${(m.reference||[]).map(([title,code,explanation])=>`<section><h3>${esc(title)}</h3><pre>${highlight(code)}</pre><p>${esc(explanation)}</p></section>`).join('')}</div></details>`;
+  const pitfall=t.pitfall?`<div class="pitfall"><strong>A common mistake</strong><p>${inlineCode(t.pitfall)}</p></div>`:'';
+  return pitfall + `<details class="module-reference"><summary>Keep this reference handy <span>${esc(m.title)}</span></summary><div>${(m.reference||[]).map(([title,code,explanation])=>`<section><h3>${esc(title)}</h3><pre>${highlight(code)}</pre><p>${inlineCode(explanation)}</p></section>`).join('')}</div></details>`;
 }
 function selectTask(id){
   if(busy)return;const t=tasks.find(t=>t.id===id);if(!t)return;if(current)persistDraft();current=t;state.last=id;save();
   const m=modules.find(m=>m.tasks.includes(t)),i=m.tasks.indexOf(t);activeTrack=m.track;$('track-select').value=activeTrack;
   $('breadcrumb').innerHTML=`${esc(m.title)} <span>/</span> ${({project:'Project',practice:'Practice',debug:'Debugging',checkpoint:'Checkpoint'})[t.kind]||'Lesson'} ${i+1} of ${m.tasks.length}`;$('duration').textContent=`${t.minutes} min`;
-  $('lesson-content').innerHTML=`<div class="lesson-number">${({project:'BUILD SOMETHING',practice:'BUILD CONFIDENCE',debug:'FIND & FIX',checkpoint:'CHECK YOUR UNDERSTANDING'})[t.kind]||'LEARN BY DOING'} <span class="type">/ ${String(i+1).padStart(2,'0')}</span></div><h1>${esc(t.title)}</h1><p class="concept">${esc(t.concept)}</p><div class="example"><div class="example-label"><span>A small example</span><span>Python</span></div><pre>${highlight(t.example)}</pre></div>${teachingNotes(t)}<div class="goal-heading"><span class="target-icon">◎</span><h3>Your turn</h3></div><ol class="goal-list">${t.goal.map(g=>`<li>${esc(g)}</li>`).join('')}</ol>${Object.keys(t.files).length?`<details class="files"><summary>Sample files · ${Object.keys(t.files).length} available</summary>${Object.entries(t.files).map(([name,data])=>`<div class="file-name">${esc(name)}</div><pre class="file-data">${esc(data)}</pre>`).join('')}</details>`:''}<div class="check-preview"><span>✓</span> ${t.checks.length} checks to help you get there</div>`;
-  if(t.input_data?.length)$('lesson-content').insertAdjacentHTML('beforeend',`<section class="input-data"><h3>Exercise inputs</h3><p>Create these values in your code.</p><dl>${t.input_data.map(item=>`<dt>${esc(item.name)}</dt><dd><code>${esc(item.value)}</code></dd>`).join('')}</dl></section>`);
+  $('lesson-content').innerHTML=`<div class="lesson-number">${({project:'BUILD SOMETHING',practice:'BUILD CONFIDENCE',debug:'FIND & FIX',checkpoint:'CHECK YOUR UNDERSTANDING'})[t.kind]||'LEARN BY DOING'} <span class="type">/ ${String(i+1).padStart(2,'0')}</span></div><h1>${esc(t.title)}</h1><p class="concept">${inlineCode(t.concept)}</p><div class="example"><div class="example-label"><span>A small example</span><span>Python</span></div><pre>${highlight(t.example)}</pre></div>${teachingNotes(t)}<div class="goal-heading"><span class="target-icon">◎</span><h3>Your turn</h3></div><ol class="goal-list">${t.goal.map(g=>`<li>${inlineCode(g)}</li>`).join('')}</ol>${Object.keys(t.files).length?`<details class="files"><summary>Sample files · ${Object.keys(t.files).length} available</summary>${Object.entries(t.files).map(([name,data])=>`<div class="file-name">${esc(name)}</div><pre class="file-data">${esc(data)}</pre>`).join('')}</details>`:''}<div class="check-preview"><span>✓</span> ${t.checks.length} checks to help you get there</div>`;
+  if(t.input_data?.length)$('lesson-content').insertAdjacentHTML('beforeend',`<section class="input-data"><h3>Exercise inputs</h3><p>Create these values in your code.</p><dl>${t.input_data.map(item=>`<dt><code class="inline-code">${esc(item.name)}</code></dt><dd><code>${esc(item.value)}</code></dd>`).join('')}</dl></section>`);
   if(t.debug_code)$('lesson-content').insertAdjacentHTML('beforeend',`<section class="example"><div class="example-label">Code to debug</div><pre>${highlight(t.debug_code)}</pre></section>`);
   if(t.provided_helpers?.length)$('lesson-content').insertAdjacentHTML('beforeend',`<details class="files"><summary>Provided helper reference</summary><p>Re-create these helpers if your exercise needs them.</p>${t.provided_helpers.map(code=>`<pre>${highlight(code)}</pre>`).join('')}</details>`);
   $('lesson-content').insertAdjacentHTML('beforeend', referencePanel(m, t));
@@ -64,7 +71,7 @@ function selectTask(id){
   $('solution').hidden=true;$('solution').innerHTML='';$('solution-btn').disabled=false;$('success').hidden=true;$('output').hidden=true;$('console-empty').hidden=false;$('run-status').textContent='Ready when you are';$('check-count').textContent='';checksView(t.checks.map(label=>({label})));showTab('console');renderHints();renderNav();
   $('previous').disabled=tasks.indexOf(t)===0;$('next').disabled=tasks.indexOf(t)===tasks.length-1;document.querySelector('.lesson-pane').scrollTop=0;
 }
-async function api(path,body){const response=await fetch(path,{method:'POST',headers:{'Content-Type':'application/json','X-Pyroom-Token':token},body:JSON.stringify(body)});const data=await response.json();if(!response.ok)throw new Error(data.error||'Something went wrong.');return data;}
+async function api(path,body){const response=await fetch(path,{method:'POST',headers:{'Content-Type':'application/json','X-Codey-Token':token},body:JSON.stringify(body)});const data=await response.json();if(!response.ok)throw new Error(data.error||'Something went wrong.');return data;}
 function setBusy(value){busy=value;for(const id of ['run-btn','submit-btn','reset-btn','preview-btn','track-select'])$(id).disabled=value;$('editor').readOnly=value;$('previous').disabled=value||tasks.indexOf(current)===0;$('next').disabled=value||tasks.indexOf(current)===tasks.length-1;for(const button of document.querySelectorAll('[data-task],[data-file],[data-review]'))button.disabled=value;$('submit-btn').innerHTML=value?'Working…':'Submit answer <span>→</span>';}
 async function run(mode){
   if(busy||!current)return;persistDraft();setBusy(true);$('run-status').textContent=mode==='submit'?'Checking your answer…':'Running…';$('success').hidden=true;
@@ -74,10 +81,10 @@ async function run(mode){
     $('check-count').textContent=result.checks?.length?`${result.checks.filter(c=>c.passed).length}/${result.checks.length}`:'';
     if(result.error){$('run-status').textContent='Needs another look';showTab('console');}
     else if(mode==='run'){$('run-status').textContent='Run finished · submit to check';showTab(result.artifacts?.length?'artifacts':'console');}
-    else if(result.passed){if(!state.completed.includes(current.id))state.completed.push(current.id);save();renderNav();$('run-status').textContent='All checks passed';$('success').hidden=false;$('success').innerHTML=`<h3>${state.completed.length===tasks.length?'Course complete. Nicely done.':'You’ve got it.'}</h3><p>${esc(result.explanation)}</p>`;showTab('checks');}
+    else if(result.passed){if(!state.completed.includes(current.id))state.completed.push(current.id);save();renderNav();$('run-status').textContent='All checks passed';$('success').hidden=false;$('success').innerHTML=`<h3>${state.completed.length===tasks.length?'Course complete. Nicely done.':'You’ve got it.'}</h3><p>${inlineCode(result.explanation)}</p>`;showTab('checks');}
     else{$('run-status').textContent='Keep going · hints are available';showTab('checks');}
     return result;
-  }catch(err){$('console-empty').hidden=true;$('output').hidden=false;$('output').classList.add('output-error');$('output').textContent=`Could not run your code. ${err.message} If Pyroom was closed, reopen Start Pyroom.cmd.`;$('run-status').textContent='Connection problem';showTab('console');}
+  }catch(err){$('console-empty').hidden=true;$('output').hidden=false;$('output').classList.add('output-error');$('output').textContent=`Could not run your code. ${err.message} If Codey was closed, reopen Start Codey.cmd.`;$('run-status').textContent='Connection problem';showTab('console');}
   finally{setBusy(false);}
 }
 function confirmAction(title,copy,label,action){$('dialog-title').textContent=title;$('dialog-copy').textContent=copy;$('dialog-confirm').textContent=label;dialogAction=action;$('confirm-dialog').showModal();}
@@ -96,7 +103,7 @@ for(const name of resultTabs){$(name+'-tab').onclick=()=>showTab(name);$(name+'-
 $('previous').onclick=()=>selectTask(tasks[tasks.indexOf(current)-1]?.id);$('next').onclick=()=>selectTask(tasks[tasks.indexOf(current)+1]?.id);
 $('hint-btn').onclick=()=>{state.hints[current.id]=Math.min((state.hints[current.id]||0)+1,current.hints.length);save();renderHints();};
 $('reset-btn').onclick=()=>confirmAction('Reset this code?','This clears every code file for this exercise so you can start from scratch. Your completed lessons and hints stay saved.','Reset code',()=>{delete state.drafts[current.id];delete state.fileDrafts[current.id];loadFile('main.py');save();});
-$('solution-btn').onclick=()=>confirmAction('Reveal the worked solution?','You can compare it with your approach. Revealing a solution does not mark the exercise complete.','Reveal solution',async()=>{const id=current.id;try{const data=await api('/api/solution',{task:id});if(current.id!==id)return;$('solution').hidden=false;$('solution').innerHTML=`<p class="solution-label">One way to solve it</p><pre class="solution-code">${highlight(data.solution)}</pre>${Object.entries(data.files||{}).map(([name,code])=>`<p class="solution-label">${esc(name)}</p><pre class="solution-code">${highlight(code)}</pre>`).join('')}<p>${esc(data.explanation)}</p>`;$('solution-btn').disabled=true;}catch(err){$('run-status').textContent=err.message;}});
+$('solution-btn').onclick=()=>confirmAction('Reveal the worked solution?','You can compare it with your approach. Revealing a solution does not mark the exercise complete.','Reveal solution',async()=>{const id=current.id;try{const data=await api('/api/solution',{task:id});if(current.id!==id)return;$('solution').hidden=false;$('solution').innerHTML=`<p class="solution-label">One way to solve it</p><pre class="solution-code">${highlight(data.solution)}</pre>${Object.entries(data.files||{}).map(([name,code])=>`<p class="solution-label">${esc(name)}</p><pre class="solution-code">${highlight(code)}</pre>`).join('')}<p>${inlineCode(data.explanation)}</p>`;$('solution-btn').disabled=true;}catch(err){$('run-status').textContent=err.message;}});
 async function init(){
   try{const raw=JSON.parse(localStorage.getItem(key)||'null');if(raw&&typeof raw==='object'){state.drafts=Object.fromEntries(Object.entries(raw.drafts||{}).filter(([k,v])=>typeof v==='string'));state.completed=Array.isArray(raw.completed)?raw.completed.filter(x=>typeof x==='string'):[];state.hints=Object.fromEntries(Object.entries(raw.hints||{}).filter(([k,v])=>Number.isInteger(v)&&v>=0&&v<=3));state.fileDrafts=Object.fromEntries(Object.entries(raw.fileDrafts||{}).filter(([id,files])=>files&&typeof files==='object'&&!Array.isArray(files)).map(([id,files])=>[id,Object.fromEntries(Object.entries(files).filter(([name,value])=>typeof value==='string'))]));state.blankEditorVersion=raw.blankEditorVersion===1?1:0;state.last=typeof raw.last==='string'?raw.last:null;}}catch{}
   try{const response=await fetch('/api/course');if(!response.ok)throw new Error('Unable to load the course.');const data=await response.json();modules=data.modules;token=data.token;tasks=modules.flatMap(m=>m.tasks);
@@ -104,6 +111,6 @@ async function init(){
     if(!state.blankEditorVersion){for(const t of tasks){if(state.drafts[t.id]===t.previous_starter)delete state.drafts[t.id];for(const [name,old] of Object.entries(t.previous_editor_files||{})){if(state.fileDrafts[t.id]?.[name]===old)delete state.fileDrafts[t.id][name];}}state.blankEditorVersion=1;save();}
     selectTask(tasks.find(t=>t.id===state.last)?.id||tasks[0].id);if(matchMedia('(max-width:640px)').matches){document.querySelector('.workspace').classList.add('sidebar-hidden');$('course-toggle').setAttribute('aria-expanded','false');}
     const context=document.modelContext;if(context?.registerTool){try{await context.registerTool({name:'get_learning_progress',description:'Read this local Python course and completed exercise IDs.',inputSchema:{type:'object',properties:{},additionalProperties:false},annotations:{readOnlyHint:true},execute:async()=>({current:current.id,completed:[...state.completed],total:tasks.length})});await context.registerTool({name:'open_python_exercise',description:'Navigate to an exercise. Saves existing work; does not run code.',inputSchema:{type:'object',properties:{id:{type:'string'}},required:['id'],additionalProperties:false},annotations:{readOnlyHint:false},execute:async input=>{if(busy||!input||typeof input.id!=='string'||!tasks.some(t=>t.id===input.id))throw new Error('Exercise unavailable');selectTask(input.id);return {current:current.id};}});}catch{}}
-  }catch(err){$('lesson-content').innerHTML=`<h1>Let’s reconnect.</h1><p class="concept">${esc(err.message)} Open Start Pyroom.cmd and refresh this page.</p>`;for(const id of ['run-btn','submit-btn','hint-btn','solution-btn','reset-btn','previous','next'])$(id).disabled=true;}
+  }catch(err){$('lesson-content').innerHTML=`<h1>Let’s reconnect.</h1><p class="concept">${esc(err.message)} Open Start Codey.cmd and refresh this page.</p>`;for(const id of ['run-btn','submit-btn','hint-btn','solution-btn','reset-btn','previous','next'])$(id).disabled=true;}
 }
 init();

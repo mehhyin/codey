@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<Container version="2">
+  <Name>codey</Name>
+  <Repository>ghcr.io/mehhyin/codey:latest</Repository>
+  <Registry>https://github.com/mehhyin/codey/pkgs/container/codey</Registry>
+  <Network>bridge</Network>
+  <Privileged>false</Privileged>
+  <Shell>sh</Shell>
+  <Overview>Codey: interactive Python learning, SQLite accounts, Google/GitHub sign-in and browser Python. One domain and one container port. Route codey.john.shiksha through Cloudflare Tunnel to this container on port 8765. All Python packages are bundled.</Overview>
+  <Category>Productivity:</Category>
+  <WebUI>https://codey.john.shiksha/</WebUI>
+  <ExtraParams>--security-opt=no-new-privileges --pids-limit=256</ExtraParams>
+  <Config Name="App port" Target="8765" Default="8765" Mode="tcp" Description="Single host port for Cloudflare Tunnel. Container port stays 8765; change the host mapping if it conflicts." Type="Port" Display="always" Required="true" Mask="false">8765</Config>
+  <Config Name="App data" Target="/data" Default="/mnt/user/appdata/codey" Mode="rw" Description="Persistent SQLite database, authentication secret and backups. Directory must be writable by UID 99 / GID 100. Keep this mapping during upgrades." Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/codey</Config>
+  <Config Name="Public app URL" Target="BETTER_AUTH_URL" Default="https://codey.john.shiksha" Mode="" Description="Exact HTTPS origin used in the browser, without trailing slash. Default is configured for your Cloudflare Tunnel hostname." Type="Variable" Display="always" Required="true" Mask="false">https://codey.john.shiksha</Config>
+  <Config Name="Google client ID" Target="GOOGLE_CLIENT_ID" Default="" Mode="" Description="Optional. Configure this and its secret together. Callback: PUBLIC_APP_URL/api/auth/callback/google" Type="Variable" Display="always" Required="false" Mask="false" />
+  <Config Name="Google client secret" Target="GOOGLE_CLIENT_SECRET" Default="" Mode="" Description="Google OAuth client secret. Leave empty if Google sign-in is unused." Type="Variable" Display="always" Required="false" Mask="true" />
+  <Config Name="GitHub client ID" Target="GITHUB_CLIENT_ID" Default="" Mode="" Description="Optional. Configure this and its secret together. Callback: PUBLIC_APP_URL/api/auth/callback/github" Type="Variable" Display="always" Required="false" Mask="false" />
+  <Config Name="GitHub client secret" Target="GITHUB_CLIENT_SECRET" Default="" Mode="" Description="GitHub OAuth client secret. Leave empty if GitHub sign-in is unused." Type="Variable" Display="always" Required="false" Mask="true" />
+  <Config Name="Authentication secret override" Target="BETTER_AUTH_SECRET" Default="" Mode="" Description="Usually leave blank: a random secret is generated once in /data/auth-secret. For migration, enter the old secret (32+ characters) and keep it stable." Type="Variable" Display="advanced" Required="false" Mask="true" />
+  <Config Name="Timezone" Target="TZ" Default="Asia/Kuala_Lumpur" Mode="" Description="Container timezone; the interface displays dates in the browser timezone." Type="Variable" Display="advanced" Required="false" Mask="false">Asia/Kuala_Lumpur</Config>
+</Container>

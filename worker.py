@@ -45,7 +45,7 @@ def main():
         try:
             plt = sys.modules['matplotlib.pyplot']
             for number in plt.get_fignums()[:4]:
-                filename = f'pyroom-plot-{number}.png'
+                filename = f'codey-plot-{number}.png'
                 plt.figure(number).savefig(filename, dpi=110, bbox_inches='tight')
                 result['plots'].append(filename)
         except Exception as exc:

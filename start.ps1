@@ -1,44 +1,32 @@
 param([switch]$NoBrowser)
 $ErrorActionPreference = 'Stop'
-$pyroomUrl = 'http://127.0.0.1:8765'
-$pyroomRoot = $PSScriptRoot
-
-function Test-Pyroom {
-    try {
-        $health = Invoke-RestMethod -Uri "$pyroomUrl/api/health" -TimeoutSec 2
-        return $health.app -eq 'pyroom'
-    } catch { return $false }
+$codeyUrl = 'http://127.0.0.1:8765'
+$codeyEnv = Join-Path $PSScriptRoot '.env'
+if (Test-Path -LiteralPath $codeyEnv) {
+    $codeySetting = Get-Content -LiteralPath $codeyEnv | Where-Object { $_ -match '^BETTER_AUTH_URL=' } | Select-Object -Last 1
+    if ($codeySetting) { $codeyUrl = $codeySetting.Substring(16).Trim().Trim('"').Trim("'") }
 }
-
+function Test-Codey {
+    try { $health = Invoke-RestMethod -Uri "$codeyUrl/api/health" -TimeoutSec 2; return $health.app -eq 'codey' -and $health.version -eq 3 }
+    catch { return $false }
+}
 try {
-    if (Test-Pyroom) {
-        if (-not $NoBrowser) { Start-Process $pyroomUrl }
-        exit 0
+    if (Test-Codey) { if (-not $NoBrowser) { Start-Process $codeyUrl }; exit 0 }
+    foreach ($required in @('.env','build/server/index.js','build/web/index.html','.runtime/pyodide/runtime.json')) {
+        if (-not (Test-Path -LiteralPath (Join-Path $PSScriptRoot $required))) { throw 'Finish the first-time setup in README.md, then open Start Codey.cmd again.' }
     }
-    $pyroomPython = Join-Path $env:USERPROFILE '.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe'
-    if (-not (Test-Path -LiteralPath $pyroomPython)) {
-        $pythonCommand = Get-Command python.exe -ErrorAction SilentlyContinue
-        if ($pythonCommand -and $pythonCommand.Source -notlike '*WindowsApps*') {
-            $pyroomPython = $pythonCommand.Source
-        } else {
-            throw 'Python could not be found. Install Python 3.12 or newer, then install the learning libraries with: python -m pip install -r requirements.txt'
-        }
-    }
-    $pyroomWork = Join-Path (Split-Path (Split-Path $pyroomRoot -Parent) -Parent) 'work\pyroom-runtime'
-    New-Item -ItemType Directory -Path $pyroomWork -Force | Out-Null
-    $pyroomProcess = Start-Process -FilePath $pyroomPython -ArgumentList @('"' + (Join-Path $pyroomRoot 'server.py') + '"') -WorkingDirectory $pyroomRoot -WindowStyle Hidden -PassThru -RedirectStandardOutput (Join-Path $pyroomWork 'server.log') -RedirectStandardError (Join-Path $pyroomWork 'server-error.log')
-    $pyroomProcess.Id | Set-Content -LiteralPath (Join-Path $pyroomWork 'server.pid')
-    for ($attempt = 0; $attempt -lt 30; $attempt++) {
-        if (Test-Pyroom) {
-            if (-not $NoBrowser) { Start-Process $pyroomUrl }
-            Write-Host 'Pyroom is open in your browser. Use Stop Pyroom.cmd when you are finished.'
+    $codeyNode = Join-Path $env:ProgramFiles 'nodejs/node.exe'
+    if (-not (Test-Path -LiteralPath $codeyNode)) { $codeyNode = (Get-Command node.exe -ErrorAction Stop).Source }
+    $codeyWork = Join-Path $PSScriptRoot '.runtime'
+    $codeyProcess = Start-Process -FilePath $codeyNode -ArgumentList @('--env-file-if-exists=.env','build/server/index.js') -WorkingDirectory $PSScriptRoot -WindowStyle Hidden -PassThru -RedirectStandardOutput (Join-Path $codeyWork 'server.log') -RedirectStandardError (Join-Path $codeyWork 'server-error.log')
+    for ($attempt = 0; $attempt -lt 40; $attempt++) {
+        if (Test-Codey) {
+            if (-not $NoBrowser) { Start-Process $codeyUrl }
+            Write-Host "Codey is ready at $codeyUrl. Use Stop Codey.cmd when finished."
             exit 0
         }
-        if ($pyroomProcess.HasExited) { break }
+        if ($codeyProcess.HasExited) { break }
         Start-Sleep -Milliseconds 300
     }
-    throw "Pyroom could not start. See $pyroomWork\server-error.log. Port 8765 may already be in use."
-} catch {
-    Write-Host $_.Exception.Message -ForegroundColor Red
-    exit 1
-}
+    throw 'Codey could not start. Check .runtime/server-error.log. Stop an older Codey server before trying again.'
+} catch { Write-Host $_.Exception.Message -ForegroundColor Red; exit 1 }

@@ -13,3 +13,6 @@
 .input-data{margin:24px 0;padding:16px;border:1px solid #3c4c43;border-radius:8px}.input-data p{color:#aab7b3;font-size:13px}.input-data dt{font-weight:600;color:#b3edc7;margin-top:12px}.input-data dd{margin:6px 0;white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px;line-height:1.7}
 
 #artifacts-panel{overflow:auto;flex:1;min-height:0}.files>pre{overflow:auto;padding:0 14px 14px;font:12px/1.7 var(--mono)}.files>p{padding:0 14px;color:var(--muted);font-size:13px}
+
+/* Explicit code references in lesson prose and exercise questions. */
+.inline-code{font-family:var(--mono);font-size:.91em;color:#d3edb4;background:#233022;border:1px solid #3c5030;border-radius:4px;padding:.1em .32em;box-decoration-break:clone;-webkit-box-decoration-break:clone;overflow-wrap:anywhere;white-space:break-spaces}.goal-list li{line-height:1.9}

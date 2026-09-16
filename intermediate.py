@@ -33,7 +33,7 @@ def extend_intermediate(module, task):
     unit(m,'refunds','Review · reconcile refunds',
         'A sales total can include refunds as negative amounts. You need a clean list and an audit of rejected records. Reuse conversion, validation, and functions, but apply a different input rule: blank strings and invalid decimal text are rejected; zero and negative values are legitimate. This is a readiness check, so start with the contract rather than a template.',
         'valid = [10.0, -2.0, 0.0]\nprint(sum(valid))  # 8.0',
-        ['Write reconcile(texts), returning {"total": ..., "accepted": ..., "rejected": ...}.', 'Accept finite decimal numbers only. Reject blanks, invalid text, NaN and infinity. Round total to two decimals.'],
+        ['Write `reconcile(texts)`, returning `{"total": ..., "accepted": ..., "rejected": ...}`.', 'Accept finite decimal numbers only. Reject blanks, invalid text, `NaN` and infinity. Round `total` to two decimals.'],
         'def reconcile(texts):\n    pass',
         '''
         import math
@@ -59,7 +59,7 @@ def extend_intermediate(module, task):
     unit(m,'latest','Review · retain the newest record',
         'A contact export can contain several versions of one customer. The last row in a file is not necessarily the latest update. Compare timestamps explicitly. These timestamps use the same ISO date format, so their strings sort chronologically. Preserve first-seen customer order in the output, but retain each customer’s latest record. For equal dates, retain the first record.',
         'print("2026-03-02" > "2026-02-28")  # True',
-        ['Write latest_customers(rows). Each row has id, updated, and name.', 'Keep the newest updated value per id. Return records in first-seen id order without mutating input.'],
+        ['Write `latest_customers(rows)`. Each row has `id`, `updated`, and `name`.', 'Keep the newest `updated` value per `id`. Return records in first-seen `id` order without mutating input.'],
         'def latest_customers(rows):\n    pass',
         '''
         def latest_customers(rows):
@@ -77,7 +77,7 @@ def extend_intermediate(module, task):
     unit(m,'quality','Review · report missing categories',
         'A regional report should account for incomplete records. Rows with missing regions cannot be assigned confidently to a group, while a zero amount is valid. Build a grouped total and an excluded count. Normalise region labels before grouping and return the result in alphabetical key order so repeated reports are predictable.',
         'totals = {}\ntotals["north"] = totals.get("north", 0) + 10',
-        ['Write region_report(rows), ignoring rows with a None amount or a blank stripped region.', 'Lowercase region labels. Return {"totals": sorted-key dictionary, "excluded": count}.'],
+        ['Write `region_report(rows)`, ignoring `rows` with a `None` value for `amount` or a blank stripped `region`.', 'Lowercase `region` labels. Return a dictionary with `totals` (a dictionary whose keys are alphabetically sorted) and `excluded` (the exclusion count).'],
         'def region_report(rows):\n    pass',
         '''
         def region_report(rows):
@@ -98,7 +98,7 @@ def extend_intermediate(module, task):
     unit(m,'contract','Review · test an unseen input',
         'A function that works on one example may still fail at a boundary. Write a small acceptance function that checks another function supplied to it. This introduces testing as executable reasoning: your checks should distinguish a correct implementation from plausible bugs. The function under test computes shipping: zero for orders of at least 50, otherwise 4.',
         'def accepts(candidate):\n    return candidate(50) == 0',
-        ['Write accepts_shipping(candidate), returning True only if candidate passes inputs 0, 49, 50, and 80.', 'Expected outputs are 4, 4, 0, 0. If candidate raises an exception, return False.'],
+        ['Write `accepts_shipping(candidate)`, returning `True` only if `candidate` passes inputs 0, 49, 50, and 80.', 'Expected outputs are 4, 4, 0, 0. If `candidate` raises an exception, return `False`.'],
         'def accepts_shipping(candidate):\n    pass',
         '''
         def accepts_shipping(candidate):
@@ -120,7 +120,7 @@ def extend_intermediate(module, task):
     unit(m,'vector','Calculate with a whole array',
         'NumPy arrays store numerical data in a uniform structure. Multiplication acts on every element, unlike list multiplication, which repeats the list. Convert input once, then express the calculation directly. Keep results as arrays until you need an ordinary list for display or serialization. This is the foundation of vectorised analysis.',
         'import numpy as np\nx = np.array([2, 4, 6])\nprint(x * 3)  # [6 12 18]',
-        ['Convert celsius to a float array called temperatures.', 'Create fahrenheit with temperatures * 9 / 5 + 32.'],
+        ['Convert `celsius` to a float array called `temperatures`.', 'Create `fahrenheit` with `temperatures * 9 / 5 + 32`.'],
         'import numpy as np\ncelsius = [0, 20, 37, -10]',
         'import numpy as np\ncelsius = [0, 20, 37, -10]\ntemperatures = np.array(celsius, dtype=float)\nfahrenheit = temperatures * 9 / 5 + 32',
         [('Create a numeric array','assert isinstance(temperatures, np.ndarray) and temperatures.dtype.kind == "f"'),('Convert all readings','assert np.allclose(fahrenheit,[32,68,98.6,14])')],
@@ -129,7 +129,7 @@ def extend_intermediate(module, task):
     unit(m,'shape','Read a two-dimensional array',
         'A two-dimensional array has rows and columns. shape reports both dimensions. Index with matrix[row, column], and use : to select a complete row or column. Before summarising a matrix, identify what each dimension represents. Here rows are days and columns are sensor locations.',
         'matrix = np.array([[1, 2], [3, 4]])\nprint(matrix[:, 0])  # [1 3]',
-        ['Set shape to readings.shape.', 'Set second_day to row index 1 and first_sensor to column index 0.'],
+        ['Set `shape` to `readings.shape`.', 'Set `second_day` to row index 1 and `first_sensor` to column index 0.'],
         'import numpy as np\nreadings = np.array([[10,20],[12,18],[14,16]])',
         'import numpy as np\nreadings = np.array([[10,20],[12,18],[14,16]])\nshape = readings.shape\nsecond_day = readings[1, :]\nfirst_sensor = readings[:, 0]',
         [('Understand dimensions','assert shape == (3,2)'),('Select row and column','assert second_day.tolist()==[12,18] and first_sensor.tolist()==[10,12,14]')],
@@ -138,7 +138,7 @@ def extend_intermediate(module, task):
     unit(m,'axes','Summarise along the right axis',
         'An aggregation reduces one or more dimensions. mean(axis=0) combines rows and returns one mean per column. mean(axis=1) combines columns and returns one mean per row. A mean without axis reduces the entire array. Write the intended question in words before choosing the axis.',
         'matrix = np.array([[2,4],[6,8]])\nprint(matrix.mean(axis=0))  # [4. 6.]',
-        ['Compute per_sensor means, per_day means, and overall from readings.'],
+        ['Compute `per_sensor` means, `per_day` means, and `overall` from `readings`.'],
         'import numpy as np\nreadings = np.array([[10,20],[12,18],[14,16]])',
         'import numpy as np\nreadings = np.array([[10,20],[12,18],[14,16]])\nper_sensor=readings.mean(axis=0)\nper_day=readings.mean(axis=1)\noverall=readings.mean()',
         [('Reduce rows for sensor summaries','assert np.allclose(per_sensor,[12,18])'),('Reduce columns for daily summaries','assert np.allclose(per_day,[15,15,15]) and overall==15')],
@@ -147,7 +147,7 @@ def extend_intermediate(module, task):
     unit(m,'masks','Filter finite readings',
         'A Boolean mask has one truth value per observation. Combine masks with & and parenthesise each comparison. np.isfinite excludes NaN and both infinities. Missing-value filtering should preserve valid zero observations. The filtered array can be shorter than its input, which is why an audit count is useful.',
         'valid = values[np.isfinite(values) & (values >= 0)]',
-        ['Create cleaned with finite, nonnegative values only.', 'Set rejected to the number of removed readings.'],
+        ['Create `cleaned` with finite, nonnegative `values` only.', 'Set `rejected` to the number of removed readings.'],
         'import numpy as np\nvalues=np.array([0,12,np.nan,-2,np.inf,8])',
         'import numpy as np\nvalues=np.array([0,12,np.nan,-2,np.inf,8])\ncleaned=values[np.isfinite(values) & (values>=0)]\nrejected=values.size-cleaned.size',
         [('Preserve zero and valid readings','assert cleaned.tolist()==[0,12,8]'),('Count removed values','assert rejected==3')],
@@ -156,7 +156,7 @@ def extend_intermediate(module, task):
     unit(m,'broadcast','Scale each column differently',
         'Broadcasting allows operations between compatible shapes. A one-dimensional array with one value per column can scale every row of a matrix. NumPy aligns dimensions from the right, so the scale vector here must match the number of columns. Inspect the shape before applying a rule across a table.',
         'matrix = np.array([[1,2],[3,4]])\nprint(matrix * np.array([10,100]))',
-        ['Create converted by multiplying each units column by its corresponding prices value.', 'Create daily_total by summing each converted row.'],
+        ['Create `converted` by multiplying each `units` column by its corresponding `prices` value.', 'Create `daily_total` by summing each `converted` row.'],
         'import numpy as np\nunits=np.array([[2,1],[3,4],[0,2]])\nprices=np.array([5,8])',
         'import numpy as np\nunits=np.array([[2,1],[3,4],[0,2]])\nprices=np.array([5,8])\nconverted=units*prices\ndaily_total=converted.sum(axis=1)',
         [('Scale by column','assert converted.tolist()==[[10,8],[15,32],[0,16]]'),('Summarise each row','assert daily_total.tolist()==[18,47,16]')],
@@ -165,7 +165,7 @@ def extend_intermediate(module, task):
     unit(m,'sensor-project','Project · audit a sensor feed',
         'Combine array construction, validation, and statistics in a reusable function. The feed contains missing and impossible measurements. Keep only finite readings between 0 and 100 inclusive. Report the valid count, rejected count, mean, and maximum. No accepted observations should produce None for the two statistics.',
         'mask = np.isfinite(values) & (values >= 0) & (values <= 100)',
-        ['Write sensor_report(readings) returning count, rejected, mean, maximum.', 'Round mean to two decimals and handle empty/all-invalid feeds.'],
+        ['Write `sensor_report(readings)` returning `count`, `rejected`, `mean`, `maximum`.', 'Round `mean` to two decimals and handle empty/all-invalid feeds.'],
         'import numpy as np\n\ndef sensor_report(readings):\n    pass',
         '''
         import numpy as np
@@ -179,13 +179,13 @@ def extend_intermediate(module, task):
         'The function combines measurements with an explicit quality audit. Try a different feed after passing the checks.',kind='project',minutes=25,review=['bridge-refunds','analysis-audit-review'])
 
     m = section('charts','Charts that explain data','Create, inspect, and export Matplotlib figures.','Make a small sales dashboard',[
-        ('Figure and axes','fig, ax = plt.subplots()\nax.plot(x, y)\nax.set(title="Trend", xlabel="Day", ylabel="Revenue")','The figure is the whole canvas; an axes object is a plotting area. Pyroom captures open figures after a run and displays them under Output files.'),
+        ('Figure and axes','fig, ax = plt.subplots()\nax.plot(x, y)\nax.set(title="Trend", xlabel="Day", ylabel="Revenue")','The figure is the whole canvas; an axes object is a plotting area. Codey captures open figures after a run and displays them under Output files.'),
         ('Choose a chart','ax.bar(labels, values)\nax.hist(values, bins=[0,10,20,30])\nax.scatter(x,y)','Lines show ordered change, bars compare categories, histograms show distributions, and scatter plots compare paired measurements.'),
         ('Save for sharing','fig.tight_layout()\nfig.savefig("chart.png", dpi=150)','Label units, use informative titles, and keep bar-chart baselines at zero. Download declared outputs from the Output files tab.')])
     unit(m,'line','Plot a trend with labelled axes',
-        'A line chart connects observations in a meaningful order, such as time. Create a figure and axes, then draw through the axes object. Labels should tell the reader what is measured and in what units. Pyroom automatically displays open Matplotlib figures after Run; you do not need an interactive desktop plotting window.',
+        'A line chart connects observations in a meaningful order, such as time. Create a figure and axes, then draw through the axes object. Labels should tell the reader what is measured and in what units. Codey automatically displays open Matplotlib figures after Run; you do not need an interactive desktop plotting window.',
         'import matplotlib.pyplot as plt\nfig, ax = plt.subplots()\nax.plot([1,2,3], [10,15,12], marker="o")\nax.set(xlabel="Day", ylabel="Orders", title="Daily orders")',
-        ['Plot days against revenue on an axes named ax, with a figure named fig.', 'Use title "Weekly revenue", xlabel "Day", and ylabel "Revenue".'],
+        ['Plot `days` against `revenue` on an axes named `ax`, with a figure named `fig`.', 'Use `title` `"Weekly revenue"`, `xlabel` `"Day"`, and `ylabel` `"Revenue"`.'],
         'import matplotlib.pyplot as plt\ndays=[1,2,3,4,5]\nrevenue=[20,35,30,45,50]',
         'import matplotlib.pyplot as plt\ndays=[1,2,3,4,5]\nrevenue=[20,35,30,45,50]\nfig,ax=plt.subplots()\nax.plot(days,revenue,marker="o")\nax.set(title="Weekly revenue",xlabel="Day",ylabel="Revenue")\nfig.tight_layout()',
         [('Plot the correct data','assert len(ax.lines)==1 and list(ax.lines[0].get_ydata())==[20,35,30,45,50] and list(ax.lines[0].get_xdata())==[1,2,3,4,5]'),('Label the chart','assert ax.get_title()=="Weekly revenue" and ax.get_xlabel()=="Day" and ax.get_ylabel()=="Revenue"')],
@@ -194,7 +194,7 @@ def extend_intermediate(module, task):
     unit(m,'bar','Compare categories honestly',
         'A bar chart uses length to encode magnitude, so its numeric baseline should normally begin at zero. Sort categories by value when the ranking is the story. Keep labels aligned with the reordered values; sorting one without the other creates a misleading chart. Here horizontal bars leave room for product names.',
         'ax.barh(["Tea", "Cake"], [20,12])\nax.set_xlim(left=0)',
-        ['Draw a horizontal bar chart in ax with Coffee, Tea, Cake and revenues 40, 30, 12.', 'Set xlabel to "Revenue" and title to "Revenue by product". Start the x axis at zero.'],
+        ['Draw a horizontal bar chart in `ax` with Coffee, Tea, Cake and revenues 40, 30, 12.', 'Set `xlabel` to `"Revenue"` and `title` to `"Revenue by product"`. Start the x axis at zero.'],
         'import matplotlib.pyplot as plt\nproducts=["Coffee","Tea","Cake"]\nrevenue=[40,30,12]',
         'import matplotlib.pyplot as plt\nproducts=["Coffee","Tea","Cake"]\nrevenue=[40,30,12]\nfig,ax=plt.subplots()\nax.barh(products,revenue)\nax.set(title="Revenue by product",xlabel="Revenue")\nax.set_xlim(left=0)\nfig.tight_layout()',
         [('Compare the intended values','assert [p.get_width() for p in ax.patches]==[40,30,12]'),('Label categories and start at zero','assert [t.get_text() for t in ax.get_yticklabels()]==["Coffee","Tea","Cake"] and ax.get_xlim()[0]==0 and ax.get_xlabel()=="Revenue" and ax.get_title()=="Revenue by product"')],
@@ -203,7 +203,7 @@ def extend_intermediate(module, task):
     unit(m,'histogram','Show a distribution',
         'A histogram groups numeric observations into intervals and counts them. Its appearance depends on the bin boundaries, so choose and report them deliberately. Adjacent bins represent neighbouring ranges rather than unrelated categories. NumPy-style histogram bins include the left edge and exclude the right, except that the final bin includes its right edge.',
         'counts, edges, patches = ax.hist(values, bins=[0,10,20,30])',
-        ['Plot minutes into bins [0,10,20,30], storing counts and edges from ax.hist.', 'Label x "Minutes" and y "Deliveries".'],
+        ['Plot `minutes` into bins `[0,10,20,30]`, storing `counts` and `edges` from `ax.hist`.', 'Label x `"Minutes"` and y `"Deliveries"`.'],
         'import matplotlib.pyplot as plt\nminutes=[2,5,9,10,12,19,20,25,30]',
         'import matplotlib.pyplot as plt\nminutes=[2,5,9,10,12,19,20,25,30]\nfig,ax=plt.subplots()\ncounts,edges,patches=ax.hist(minutes,bins=[0,10,20,30])\nax.set(xlabel="Minutes",ylabel="Deliveries",title="Delivery times")',
         [('Use the requested bins','assert list(edges)==[0,10,20,30] and list(counts)==[3,3,3]'),('Draw and label the distribution','assert len(ax.patches)==3 and ax.get_xlabel()=="Minutes" and ax.get_ylabel()=="Deliveries"')],
@@ -212,16 +212,16 @@ def extend_intermediate(module, task):
     unit(m,'scatter','Compare paired measurements',
         'A scatter plot keeps each x measurement paired with its corresponding y measurement. It can reveal patterns and unusual points without assuming that x caused y. Reordering one series independently breaks those pairs. Here compare advertising spend with revenue and compute correlation as a description, not a causal claim.',
         'ax.scatter(spend, revenue)\ncorrelation = np.corrcoef(spend, revenue)[0,1]',
-        ['Scatter spend against revenue in ax and calculate correlation.', 'Use xlabel "Ad spend" and ylabel "Revenue".'],
+        ['Scatter `spend` against `revenue` in `ax` and calculate `correlation`.', 'Use `xlabel` `"Ad spend"` and `ylabel` `"Revenue"`.'],
         'import numpy as np\nimport matplotlib.pyplot as plt\nspend=[10,20,30,40]\nrevenue=[25,40,35,60]',
         'import numpy as np\nimport matplotlib.pyplot as plt\nspend=[10,20,30,40]\nrevenue=[25,40,35,60]\nfig,ax=plt.subplots()\nax.scatter(spend,revenue)\nax.set(xlabel="Ad spend",ylabel="Revenue",title="Spend and revenue")\ncorrelation=float(np.corrcoef(spend,revenue)[0,1])',
         [('Preserve the paired points','assert np.allclose(ax.collections[0].get_offsets(),[[10,25],[20,40],[30,35],[40,60]])'),('Calculate and label the comparison','assert abs(correlation-float(np.corrcoef(spend,revenue)[0,1]))<1e-8 and ax.get_xlabel()=="Ad spend" and ax.get_ylabel()=="Revenue"')],
         ['Use scatter rather than plot.','np.corrcoef returns a matrix; select [0,1].','Preserve the original order of both lists.'],
         'The relationship is positive in this small sample, but these four observations do not establish cause and effect.',review=['arrays-vector','analysis-spread'])
     unit(m,'export','Export a chart you can share',
-        'A saved chart should make sense without the notebook or lesson beside it. Add a title, axis labels, and a sensible layout before exporting. PNG is a bitmap format convenient for sharing. The export happens before the practice folder is removed, and Pyroom lets you download the declared file from Output files.',
+        'A saved chart should make sense without the notebook or lesson beside it. Add a title, axis labels, and a sensible layout before exporting. PNG is a bitmap format convenient for sharing. The export happens before the practice folder is removed, and Codey lets you download the declared file from Output files.',
         'fig.tight_layout()\nfig.savefig("report.png", dpi=150)',
-        ['Create a vertical bar chart for North=30 and South=20 in ax.', 'Title it "Regional sales", label the y axis "Revenue", and save report.png.'],
+        ['Create a vertical bar chart for `North=30` and `South=20` in `ax`.', 'Title it `"Regional sales"`, label the y axis `"Revenue"`, and save `report.png`.'],
         'import matplotlib.pyplot as plt',
         'import matplotlib.pyplot as plt\nfig,ax=plt.subplots()\nax.bar(["North","South"],[30,20])\nax.set(title="Regional sales",ylabel="Revenue")\nfig.tight_layout()\nfig.savefig("report.png",dpi=150)',
         [('Create the labelled bars','assert [p.get_height() for p in ax.patches]==[30,20] and ax.get_title()=="Regional sales" and ax.get_ylabel()=="Revenue"'),('Save an actual PNG','from pathlib import Path\nassert Path("report.png").read_bytes().startswith(bytes([137,80,78,71]))')],
@@ -230,7 +230,7 @@ def extend_intermediate(module, task):
     unit(m,'dashboard','Project · two views of the same sales',
         'A useful report can show both change over time and contribution by category. Build one figure with two plotting areas, using one dataset for each question. Keep titles and labels specific. This project gives an output contract rather than a completed plotting template; use the reference and earlier examples as needed.',
         'fig, axes = plt.subplots(1, 2, figsize=(10,4))\nleft, right = axes',
-        ['Create fig with two axes named trend and categories.', 'Plot daily=[10,20,15,30] against days 1–4 on trend; title "Daily revenue".', 'Plot Tea=40 and Cake=35 as bars on categories; title "Product revenue". Label both y axes "Revenue" and save dashboard.png.'],
+        ['Create `fig` with two axes named `trend` and `categories`.', 'Plot `daily = [10,20,15,30]` against days 1–4 on `trend`; title `"Daily revenue"`.', 'Plot `Tea=40` and `Cake=35` as bars on `categories`; title `"Product revenue"`. Label both y axes `"Revenue"` and save `dashboard.png`.'],
         'import matplotlib.pyplot as plt\ndaily=[10,20,15,30]',
         'import matplotlib.pyplot as plt\ndaily=[10,20,15,30]\nfig,(trend,categories)=plt.subplots(1,2,figsize=(10,4))\ntrend.plot([1,2,3,4],daily,marker="o")\ntrend.set(title="Daily revenue",xlabel="Day",ylabel="Revenue")\ncategories.bar(["Tea","Cake"],[40,35])\ncategories.set(title="Product revenue",ylabel="Revenue")\nfig.tight_layout()\nfig.savefig("dashboard.png",dpi=150)',
         [('Use two views with correct data','assert len(fig.axes)==2 and list(trend.lines[0].get_ydata())==[10,20,15,30] and [p.get_height() for p in categories.patches]==[40,35]'),('Provide interpretable titles','assert trend.get_title()=="Daily revenue" and categories.get_title()=="Product revenue" and trend.get_ylabel()==categories.get_ylabel()=="Revenue"'),('Export the dashboard','from pathlib import Path\nassert Path("dashboard.png").read_bytes().startswith(bytes([137,80,78,71]))')],

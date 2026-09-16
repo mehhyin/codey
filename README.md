@@ -1,70 +1,140 @@
-# Pyroom
+# Codey
 
-A personal, local Python learning workspace. No accounts, paid APIs, hosted services, or internet connection are needed on this computer.
+A local Python learning platform with 173 exercises, guided projects, Google/GitHub sign-in through Better Auth, and account progress stored in SQLite. The existing interface and blank editors are preserved.
+
+For a container deployment, see **[Unraid setup](deploy/unraid/README.md)** and **[Unraid XML template](deploy/unraid/codey.xml)**. GitHub Actions builds and publishes release images to GHCR; the container uses persistent appdata and one HTTPS domain through Cloudflare Tunnel. The instructions below describe the original local Windows setup.
 
 ## Open it later
 
-1. Open this folder in File Explorer.
-2. Double-click **Start Pyroom.cmd**. Your default browser will open automatically.
-3. Bookmark **http://127.0.0.1:8765**. Run the launcher again after restarting your computer.
+Double-click **Start Codey.cmd**, then use **http://127.0.0.1:8765** in your browser. Bookmark that exact address. Double-click **Stop Codey.cmd** when finished; closing the browser alone leaves the server running.
 
-Double-click **Stop Pyroom.cmd** to stop the local server when finished. Closing the browser alone leaves the server running. You can create a Windows shortcut to Start Pyroom.cmd using File Explorer.
+This computer is set up for guest practice. Add OAuth credentials below to enable account sign-in. No Docker, Go, Next.js, paid API or deployment is required.
 
-The launcher uses the Python runtime already present on this computer. NumPy, pandas, Matplotlib, openpyxl, and Flask are installed locally. On another computer, install Python 3.12 or later, run `python -m pip install -r requirements.txt` from this folder, then run `python server.py --open`. Dependency installation needs internet access once; the lessons run offline afterwards. On this computer, additional libraries are in `../../work/pyroom-packages`, loaded by `learning_runtime.py`.
+## First-time setup on another computer
+
+Install Node.js **24.15 or newer** and Python **3.12 or newer**. Python is only used to export the authored curriculum at build time; learner code runs in the browser. Open a terminal in this folder:
+
+```sh
+npm ci
+npm run setup
+npm run runtime:setup
+npm run build
+npm start
+```
+
+`setup` creates `.env` with a random authentication secret without overwriting an existing file. `runtime:setup` downloads Python and its learning libraries into `.runtime/pyodide`, verifying package checksums. Installation requires internet access. Lessons run locally afterwards; signing in with Google/GitHub requires internet access. The first Run after opening a lesson may take a few seconds to load the Python libraries.
+
+If the curriculum export cannot find Python, set `CODEY_PYTHON` to the full Python executable path in your environment. On this computer, the existing bundled Python is detected automatically. `npm.cmd` can be used on Windows if PowerShell blocks `npm.ps1`.
+
+After changing curriculum or interface source, run `npm run build`, restart Codey and refresh the page. Do not start the legacy `server.py` alongside the new server.
+
+## Google and GitHub sign-in
+
+Edit **.env locally**. Never put credentials into chat or commit the file. Configure either provider or both; leave an unused provider's two values empty. Restart Codey after editing.
+
+### Google
+
+1. In Google Cloud Console, create/select a project and configure its Google Auth Platform branding, audience and contact details. While the app is in testing, add your Google account as a test user.
+2. Create an OAuth client with application type **Web application**.
+3. Add the authorized JavaScript origin `http://127.0.0.1:8765` and authorized redirect URI `http://127.0.0.1:8765/api/auth/callback/google`.
+4. Set `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` in `.env`.
+
+Reference: [Better Auth Google setup](https://www.better-auth.com/docs/authentication/google).
+
+### GitHub
+
+1. In GitHub Settings → Developer settings → OAuth Apps, register an OAuth application.
+2. Set Homepage URL to `http://127.0.0.1:8765` and Authorization callback URL to `http://127.0.0.1:8765/api/auth/callback/github`.
+3. Generate its client secret and set `GITHUB_CLIENT_ID` and `GITHUB_CLIENT_SECRET` in `.env`.
+
+Reference: [Better Auth GitHub setup](https://www.better-auth.com/docs/authentication/github).
+
+Keep `BETTER_AUTH_URL` and every registered callback identical, including hostname and port. If your provider requires `localhost`, set `BETTER_AUTH_URL=http://localhost:8765` and use that hostname consistently in the provider settings and browser. Guest browser storage belongs to the original address; import it there before switching addresses. Keep `BETTER_AUTH_SECRET` stable across restarts.
+
+After restart, the configured sign-in button becomes active. The provider authenticates you; Codey stores its user, account and session records in SQLite. Password registration is disabled in the normal app. Account linking is disabled: use the same provider to return to the same account. Live Google/GitHub authorization cannot be verified until real credentials are configured.
+
+## Where your progress lives
+
+When signed in, **data/codey.sqlite** stores:
+
+- Better Auth users, provider accounts and sessions.
+- Every exercise's main and companion-file drafts, with revision checks.
+- Completion, revealed hints, solution reveals and the last exercise opened.
+- Submitted code snapshots, check results and submission history.
+
+All account routes derive the user ID from the session. Another account cannot read your drafts or attempts. Drafts autosave after a short pause; wait for **Saved to your account** before closing. A temporary browser recovery copy holds pending drafts, hints and submissions if a save fails. Network failures retry; conflicting edits from another tab require choosing which draft to keep. Recovery data is scoped to the signed-in account. Use a separate browser profile on a shared computer: browser recovery storage is not encrypted against someone using that same profile.
+
+Guests continue using `codey.workspace.v1` in browser local storage. Guest work survives the upgrade at the same browser/address. Codey falls back to the old `pyroom.workspace.v1` key on first use and writes to `codey.workspace.v1`; old recovery data remains readable too. The old key is retained as a fallback. After signing in, choose **Import browser progress** to import it once. Existing account drafts take priority; hints and completions merge. The original guest copy is retained. Account imports are labelled as imported practice results internally.
+
+Different browsers and private windows have separate guest storage. SQLite account progress remains available after signing into the same account from another browser on this computer.
+
+### Backup and restore
+
+Run `npm run backup` to make a consistent SQLite snapshot in **backups/**, including changes in the WAL. It works while Codey is running. Protect backups because they include account data and sessions. Back up `.env` separately in a secure location.
+
+To restore, stop Codey, preserve the existing database together with any `-wal`/`-shm` companions in another folder, then copy the chosen backup to the configured `DATABASE_PATH`. Start Codey again. Do not replace a database while its server is running.
 
 ## Learn
 
-- Pick any lesson in the course outline. All lessons are available immediately.
-- Every exercise starts with a **blank editor**, including companion Python files. Required values appear under **Exercise inputs** in the instructions; debugging exercises show the broken program separately. Code you wrote stays saved. Untouched drafts matching the old prefilled code are cleared once during this update.
-- Write main.py from scratch. Tab inserts four spaces, and Enter preserves indentation. Click a filename above the editor to edit companion files. Reset code clears all code files for that exercise.
-- **Run code** executes your Python. **Submit answer** runs the exercise checks and marks the exercise complete if every check passes.
-- **Ctrl+Enter** runs code; **Ctrl+Shift+Enter** submits it.
-- Reveal hints one at a time. Worked solutions have a separate confirmation and do not automatically complete an exercise.
-- Each project consists of independent steps with supplied starting inputs. Earlier projects provide more guidance; later projects use broader briefs.
+Pick any lesson; all modules are available immediately. Each exercise and companion file starts blank. Required inputs and debugging examples appear in the instructions. Variables, functions and filenames in questions are rendered as inline code.
 
-Use the **Learning track** selector to choose Foundations or Intermediate. All modules are available immediately. Progress is shown for the selected track.
+- **Run code** executes your Python; **Submit answer** checks it and records a practice submission when signed in.
+- **Ctrl+Enter** runs; **Ctrl+Shift+Enter** submits. Tab inserts four spaces, and Enter preserves indentation.
+- Reveal hints one at a time. Worked solutions require a separate confirmation and do not automatically complete an exercise.
+- **History** shows your latest 30 submissions for the current exercise, including their code.
+- Charts and declared exports appear under **Output files** and can be downloaded. Attempt files live in browser memory and reset for every run.
 
-The course has **19 modules and 173 exercises/project steps**:
-
-| Track | Modules | Exercises | Content |
+| Track | Modules | Exercises | Topics |
 | --- | ---: | ---: | --- |
-| Foundations | 9 | 118 | Essentials, decisions and loops, collections, functions, files/CSV/JSON, analysis, pandas, automation, web concepts |
-| Intermediate | 10 | 55 | Mixed review, NumPy, Matplotlib, deeper pandas, Excel, SQLite, APIs, reliable programs, Flask, independent projects |
+| Foundations | 9 | 118 | Python essentials, control flow, collections, functions, files, analysis, pandas, automation and web concepts |
+| Intermediate | 10 | 55 | Mixed review, NumPy, Matplotlib, deeper pandas, Excel, SQLite, APIs, reliable programs, Flask and independent projects |
 
-Intermediate projects include a sensor audit, chart dashboard, monthly data report, Excel workbook, SQL export, API report, reusable reporting tool, and local task tracker. Three independent projects combine these skills into a sales reporting pack, batch file audit, and inventory notebook. Recall links revisit relevant earlier exercises. There is no advanced track yet.
+There is no advanced track yet. The curriculum is original, with progression informed by public [DataCamp](https://www.datacamp.com/courses/intro-to-python-for-data-science) and [Dataquest](https://www.dataquest.io/path/data-analyst/) curriculum outlines.
 
-## Your work
+## Browser Python and web projects
 
-Drafts, completion, and revealed hints are saved in this browser's local storage. Use the same browser and the exact same address to resume. Codex's embedded browser and your normal browser have separate storage. Clearing browser data removes this progress. Private browsing does not provide durable progress after its private session ends.
+Pyodide runs Python 3.14 in a fresh Web Worker served under `/python/` on the same origin. NumPy, pandas, Matplotlib, openpyxl, SQLite and Flask are available. No learner Python runs on the host or in the Node server. Host files and the account database are not mounted into Python. A content-security policy restricts worker requests to the static `/python/` path and blocks nested workers. That path has no account API, filesystem proxy, uploads or redirects. Workers cannot access the DOM or localStorage; account session cookies are HttpOnly. This is browser-based isolation, not a separate-origin security boundary. Session cookies are HttpOnly; the main app also checks origin and request headers for writes.
 
-Each Python attempt gets fresh sample files in a disposable practice folder. Files are checked before that folder is removed. Charts and declared exports appear under **Output files**, where you can download them to your browser's normal download location. Pyroom does not automatically write reports into personal folders. Up to four open figures are captured; exports are limited to 2 MB each and 6 MB total per attempt. Run again after refreshing to regenerate outputs.
+The local Node process listens on **8765**. Containers configure `HOST=0.0.0.0` and `PORT=8765`; `BETTER_AUTH_URL` sets the public browser address. The app, API and bundled Python files use this one port. Remote deployments require HTTPS. The Unraid template is configured for **https://codey.john.shiksha**.
 
-Flask exercises have a **Preview app** button. Start a preview, then click **Open local app** to use it in a browser. Define `app`; do not call `app.run()`. Use `url_for` for form actions and redirects. A preview keeps its database between requests. Starting another preview resets the previous one, and stopping Pyroom closes it. Previews expire after about an hour. API lessons use a local practice server and require no third-party credentials.
+Exercises have 8-second or 20-second execution limits after runtime initialization; infinite loops terminate the worker. Output is capped at 24,000 characters. Exports are limited to 2 MB per file and 6 MB total. Very large allocations can still exhaust a browser tab's memory. `input()` is not an interactive prompt here.
 
-Python runs in a separate process with an 8-second limit for Foundations or 20 seconds for Intermediate, and capped captured output. This is **not a security sandbox**: code can access local files and system resources permitted to your account. The app is for your own learning code and binds only to 127.0.0.1. It is not designed to host other users or run untrusted programs. input() is not interactive; exercises use named variables and supplied files.
+API exercises use an offline `urllib` adapter with practice responses, pagination, HTTP errors and retries. They teach the request/response workflow without outbound network access.
+
+**Preview app** runs Flask through its test client. HTML forms and local links work inside the Output files panel. Learner JavaScript, external links and network requests are disabled. Define `app`; do not call `app.run()`. Preview databases survive form submissions within that preview and reset on another run, exercise change or page reload. This teaches Flask routing, validation, templates and SQL; it does not start a listening web server.
+
+Checks run in the learner's browser, so stored completions are **personal practice results**, not independently verified exam scores. Users can inspect or modify browser-side checks. This is the deliberate tradeoff for a Docker-free local platform.
+
+## Architecture and development
+
+One Node.js process runs Hono, Better Auth, SQLite, the built Vite interface and the static Python assets. Better Auth's TypeScript integration is the reason this build uses Node instead of a single Go binary.
+
+- `web/`: interface source and account/runtime clients.
+- `server/`: Hono routes, authentication, migrations, account persistence and backup utility.
+- `runner/`: browser Python execution, offline API fixture and Flask preview transport.
+- `course*.py`, `intermediate*.py`: original curriculum, checks and worked solutions.
+- `scripts/`: environment setup, curriculum export and runtime downloads.
+- `build/`, `.generated/`, `.runtime/`: generated, ignored files.
+- `server.py`, `worker.py`, `project_preview.py`, `dist/`: retained legacy implementation for reference; not served by the new launcher.
+
+Better Auth migrations and versioned application migrations run automatically at startup. SQLite uses foreign keys, WAL and a busy timeout. Back up before future schema upgrades. `.env`, databases, backups, runtime packages and dependencies are excluded from Git.
+
+```sh
+npm run build
+npm run typecheck
+npm test
+npm run test:runner
+```
+
+The account integration tests create real Better Auth sessions in disposable databases. Password sign-up is enabled only inside the test factory, never by the normal server entry point. Runtime tests execute all 173 reference solutions using the installed WebAssembly Python, including the Flask form workflow.
 
 ## Troubleshooting
 
-- If the page cannot connect, run Start Pyroom.cmd and refresh it.
-- After a server restart, refresh the page before running code.
-- If a program times out, check for an endless loop or a long-running operation.
-- If a library is missing on another machine, run `python -m pip install -r requirements.txt` with the Python interpreter used to start Pyroom.
-- Server logs are stored in `../../work/pyroom-runtime/` relative to this folder.
-
-## Source
-
-`server.py` serves the app and runs attempts. `worker.py` executes Python and checks behavior. `course.py` and `course_extra.py` contain editable lessons, checks, and worked solutions. `dist/` contains the interface. There are no JavaScript dependencies or build steps.
-
-## Expanded learning sequence
-
-Foundations modules have 13 exercises each (Python essentials has 14). Intermediate starts with four mixed reviews, followed by eight modules of six exercises each and three independent projects. Work through concepts, practise individual parts, and combine them in projects. The minutes shown are estimates, not deadlines. Revisit difficult exercises; revealing a solution does not mean the skill has been mastered.
-
-The new curriculum is original. Public curriculum outlines informed the progression and emphasis on repeated coding practice:
-
-- DataCamp Introduction to Python: https://www.datacamp.com/courses/intro-to-python-for-data-science
-- DataCamp Intermediate Python: https://www.datacamp.com/courses/intermediate-python
-- Dataquest Learn Python path: https://www.dataquest.io/path/learn-python/
-
-No proprietary lesson text, exercises, or solutions were copied. This is a local practice course, not an equivalent replacement for every course offered by those platforms. Additional content lives in course_practice.py, course_practice_more.py, course_practice_applied.py, and course_reference.py.
-
-Intermediate content lives in `intermediate.py`, `intermediate_data.py`, and `intermediate_apps.py`. Run `python tests/test_course.py` to check all 173 solutions, empty submissions, and runtime errors. Run `python tests/test_workspace.py` to check blank-editor metadata, downloads, multiple files, local previews, and HTTP validation. Neither test changes your browser progress.
+- Cannot connect: run Start Codey.cmd, then refresh the exact configured address.
+- Sign-in buttons disabled: configure that provider's two `.env` values and restart.
+- OAuth redirect mismatch: check the exact hostname, port and callback path above.
+- Python cannot load: run `npm run runtime:setup`; check that `/python/pyodide/runtime.json` is reachable through the same hostname.
+- Endless program: the worker will stop at its time limit. Correct the loop and run again.
+- Save conflict: use the banner to keep your local draft or use the account draft.
+- Save failure: keep the tab open. Pending work retries when the connection returns.
+- Startup error: see `.runtime/server-error.log` and `.runtime/server.log`.

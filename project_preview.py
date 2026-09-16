@@ -34,7 +34,7 @@ def main():
         if (environ.get('HTTP_HOST') != host or not path.startswith(prefix + '/')
                 or (origin is not None and origin != 'http://' + host)):
             start_response('403 Forbidden', [('Content-Type', 'text/plain')])
-            return [b'Open this project using its Pyroom preview link.']
+            return [b'Open this project using its Codey preview link.']
         environ['SCRIPT_NAME'] = prefix
         environ['PATH_INFO'] = path[len(prefix):]
         return app(environ, start_response)

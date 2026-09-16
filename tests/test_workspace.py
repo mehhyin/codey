@@ -76,7 +76,7 @@ def main():
     threading.Thread(target=httpd.serve_forever,daemon=True).start()
     base=f'http://127.0.0.1:{httpd.server_port}'
     def post(path,body,expected=200,headers=None):
-        request=urllib.request.Request(base+path,data=json.dumps(body).encode(),headers=headers or {'Content-Type':'application/json','X-Pyroom-Token':server.TOKEN})
+        request=urllib.request.Request(base+path,data=json.dumps(body).encode(),headers=headers or {'Content-Type':'application/json','X-Codey-Token':server.TOKEN})
         try:
             with urllib.request.urlopen(request) as response:
                 assert response.status==expected
@@ -91,7 +91,7 @@ def main():
         assert post('/api/execute',body)['passed']
         post('/api/execute',dict(body,files={'../unexpected.py':'pass'}),400)
         post('/api/execute',body,403,{'Content-Type':'application/json'})
-        post('/api/execute',body,403,{'Content-Type':'application/json','X-Pyroom-Token':server.TOKEN,'Origin':'https://example.invalid'})
+        post('/api/execute',body,403,{'Content-Type':'application/json','X-Codey-Token':server.TOKEN,'Origin':'https://example.invalid'})
         post('/api/execute',dict(body,mode='unknown'),400)
         post('/api/preview',body,400)
         assert post('/api/solution',{'task':task['id']})['files']==task['solution_files']

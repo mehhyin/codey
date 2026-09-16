@@ -17,3 +17,17 @@ venv/
 .idea/
 .DS_Store
 Thumbs.db
+
+# Full-stack build, dependencies, database, and credentials
+node_modules/
+build/
+.generated/
+data/
+backups/
+*.sqlite
+*.sqlite-*
+*.db-wal
+*.db-shm
+
+# This computer's portable GitHub sign-in helper
+/Sign in to GitHub.cmd

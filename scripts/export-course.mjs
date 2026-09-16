@@ -1,0 +1,10 @@
+import { spawnSync } from 'node:child_process';
+import { existsSync } from 'node:fs';
+import { homedir } from 'node:os';
+import { join } from 'node:path';
+import 'dotenv/config';
+const bundled=join(homedir(),'.cache/codex-runtimes/codex-primary-runtime/dependencies/python/python.exe');
+const python=process.env.CODEY_PYTHON || (existsSync(bundled)?bundled:process.platform==='win32'?'python':'python3');
+const result=spawnSync(python,['scripts/export_course.py'],{stdio:'inherit',windowsHide:true});
+if(result.error)console.error('Python is needed to export the authored curriculum. Set CODEY_PYTHON in .env.');
+process.exit(result.status??1);

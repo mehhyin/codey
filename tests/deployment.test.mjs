@@ -1,8 +1,23 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { createServer } from 'node:http';
+import { httpProbe } from '../scripts/http-probe.mjs';
 import { configFromEnvironment } from '../build/server/config.js';
 import { createApp } from '../build/server/app.js';
 const secret='deployment-test-secret-only-123456789';
+test('container probes preserve the public Host over a real HTTP connection',async()=>{
+  const server=createServer((req,res)=>{
+    res.writeHead(req.headers.host==='codey.example.test'?200:403,{'Content-Type':'application/json'});
+    res.end(JSON.stringify({host:req.headers.host}));
+  });
+  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
+  try{
+    const url=`http://127.0.0.1:${server.address().port}/api/health`;
+    const response=await httpProbe(url,'codey.example.test');
+    assert.equal(response.status,200);assert.equal(JSON.parse(response.body).host,'codey.example.test');
+    assert.equal((await httpProbe(url,'wrong.example.test')).status,403);
+  }finally{await new Promise(resolve=>server.close(resolve));}
+});
 test('one container port supports a public HTTPS domain and local development',()=>{
   const c=configFromEnvironment({BETTER_AUTH_SECRET:secret,BETTER_AUTH_URL:'https://codey.john.shiksha',HOST:'0.0.0.0',PORT:'8765'});
   assert.equal(c.port,8765);assert.equal(c.host,'0.0.0.0');assert.equal(c.baseURL,'https://codey.john.shiksha');

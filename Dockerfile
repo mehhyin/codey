@@ -19,7 +19,7 @@ COPY --from=build /app/build ./build
 COPY --from=build /app/.generated ./.generated
 COPY --from=build /app/.runtime/pyodide ./.runtime/pyodide
 COPY --from=build /app/runner ./runner
-COPY scripts/container-entrypoint.mjs scripts/container-healthcheck.mjs ./scripts/
+COPY scripts/container-entrypoint.mjs scripts/container-healthcheck.mjs scripts/http-probe.mjs ./scripts/
 RUN mkdir -p /data && chown 99:100 /data
 USER 99:100
 VOLUME ["/data"]

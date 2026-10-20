@@ -7,15 +7,27 @@ export function stopRuntime(){worker?.terminate();worker=undefined;active=undefi
 async function startRuntime(onStatus:(text:string)=>void){
   stopRuntime();onStatus('Loading browser Python…');
   worker=new Worker(origin+'/worker.js',{type:'module'});
+  const startingWorker=worker;
+  let phase='loading the Python worker',ready=false;
   await new Promise<void>((resolve,reject)=>{
-    const timeout=setTimeout(()=>{stopRuntime();reject(new Error('Browser Python took too long to load. Try again.'));},120000);
+    const fail=(message:string)=>{
+      if(worker!==startingWorker)return;
+      clearTimeout(timeout);
+      const pending=active;
+      stopRuntime();
+      if(ready)pending?.({type:'failure',id:sequence,error:message});
+      else reject(new Error(message));
+    };
+    const timeout=setTimeout(()=>fail(`Browser Python took too long while ${phase}. Reload Codey and try again.`),120000);
     worker!.onmessage=({data}:MessageEvent<Reply>)=>{
-      if(data.type==='status')onStatus(data.message||'Loading browser Python…');
-      else if(data.type==='ready'){clearTimeout(timeout);resolve();}
-      else if(data.type==='failure'&&!data.id){clearTimeout(timeout);stopRuntime();reject(new Error(data.error));}
+      if(worker!==startingWorker)return;
+      if(data.type==='status'){phase=data.message||'loading browser Python';onStatus(phase);}
+      else if(data.type==='ready'){ready=true;phase='running your code';clearTimeout(timeout);resolve();}
+      else if(data.type==='failure'&&!data.id)fail(data.error||'Browser Python could not start.');
       else active?.(data);
     };
-    worker!.onerror=event=>{clearTimeout(timeout);stopRuntime();reject(new Error(event.message||'Browser Python could not start.'));};
+    worker!.onerror=event=>fail(`Browser Python stopped while ${phase}. ${event.message||'The browser did not provide details. Reload Codey with Ctrl+Shift+R and try again.'}`);
+    worker!.onmessageerror=()=>fail('The browser could not read a Python worker response. Reload Codey and try again.');
     worker!.postMessage({type:'init'});
   });
 }

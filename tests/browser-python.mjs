@@ -10,6 +10,8 @@ for(const name of manifest.wheels){py.unpackArchive(new Uint8Array(readFileSync(
 py.runPython("import os\nos.environ['MPLBACKEND']='Agg'\nimport matplotlib\nmatplotlib.use('Agg')");
 py.runPython(readFileSync('runner/execute.py','utf8'));
 const tasks=JSON.parse(readFileSync('.generated/tasks.json','utf8'));
+const curriculum=JSON.parse(readFileSync('.generated/course.json','utf8'));
+const expansion=new Set(curriculum.filter(m=>['advanced','analytics'].includes(m.track)).flatMap(m=>m.tasks.map(t=>t.id)));
 let failures=0;
 for(const task of Object.values(tasks)){
  if(task.files['practice_api.py'])task.files['practice_api.py']=readFileSync('runner/practice_api.py','utf8');
@@ -20,6 +22,11 @@ for(const task of Object.values(tasks)){
    if(!result.passed){failures++;console.log('FAIL',task.id,result.error,result.checks.filter(c=>!c.passed));}else console.log('PASS',task.id);
  }catch(error){failures++;console.log('FAIL',task.id,String(error).slice(-1200));}
  py.runPython("import matplotlib.pyplot as plt\nplt.close('all')");
+ if(expansion.has(task.id)){
+   py.globals.set('_request_json',JSON.stringify({task,files:{'main.py':''},mode:'submit'}));
+   const blank=JSON.parse(py.runPython('json.dumps(execute_attempt(json.loads(_request_json)))'));
+   if(blank.passed){failures++;console.log('FAIL',task.id,'Empty answer incorrectly passed');}
+ }
 }
 const task=tasks['flask-tracker-project'];
 py.globals.set('_request_json',JSON.stringify({task,files:{'main.py':task.solution},mode:'preview'}));

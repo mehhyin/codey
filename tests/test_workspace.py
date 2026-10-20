@@ -19,7 +19,7 @@ from learning_runtime import configure
 def main():
     tasks = all_tasks()
     public = public_course()
-    assert len([t for m in MODULES for t in m['tasks']]) == len(tasks) == 173
+    assert len([t for m in MODULES for t in m['tasks']]) == len(tasks) == 209
     for module in public:
         for task in module['tasks']:
             assert task['starter'] == ''

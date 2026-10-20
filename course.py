@@ -114,3 +114,9 @@ expand(MODULES, task)
 
 from intermediate import extend_intermediate
 extend_intermediate(module, task)
+
+from course_expansion import extend_courses
+extend_courses(module, task)
+
+from course_briefs import clarify_briefs
+clarify_briefs(MODULES)

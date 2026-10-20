@@ -1,6 +1,6 @@
 # Codey
 
-A local Python learning platform with 173 exercises, guided projects, Google/GitHub sign-in through Better Auth, and account progress stored in SQLite. The existing interface and blank editors are preserved.
+A local Python learning platform with 209 exercises, guided projects, Google/GitHub sign-in through Better Auth, and account progress stored in SQLite. Editors start blank, with explicit inputs and output requirements in each exercise.
 
 For a container deployment, see **[Unraid setup](deploy/unraid/README.md)** and **[Unraid XML template](deploy/unraid/codey.xml)**. GitHub Actions builds and publishes release images to GHCR; the container uses persistent appdata and one HTTPS domain through Cloudflare Tunnel. The instructions below describe the original local Windows setup.
 
@@ -88,8 +88,18 @@ Pick any lesson; all modules are available immediately. Each exercise and compan
 | --- | ---: | ---: | --- |
 | Foundations | 9 | 118 | Python essentials, control flow, collections, functions, files, analysis, pandas, automation and web concepts |
 | Intermediate | 10 | 55 | Mixed review, NumPy, Matplotlib, deeper pandas, Excel, SQLite, APIs, reliable programs, Flask and independent projects |
+| Advanced Python | 2 | 12 | Sequences, lazy generators, callbacks, regex validation, classes, composition, inheritance and collection protocols |
+| Data analytics | 4 | 24 | Exploratory analysis, missingness, join validation, probability, resampling, SQL windows, regression and model evaluation |
 
-There is no advanced track yet. The curriculum is original, with progression informed by public [DataCamp](https://www.datacamp.com/courses/intro-to-python-for-data-science) and [Dataquest](https://www.dataquest.io/path/data-analyst/) curriculum outlines.
+Start with Foundations. Advanced Python builds on functions and collections; Data analytics assumes the pandas, NumPy, charting and SQLite lessons in Intermediate. Each new module includes Recall links and ends with a guided project. Projects cover sensor-message audits, library loans, support response times, randomized experiments, customer-value reports and held-out demand predictions. Supplied datasets are small and synthetic. Written experiment conclusions are for self-review: the grader checks the calculations and file structure, not the meaning of prose.
+
+The curriculum, datasets, questions and worked solutions are original. Public topic outlines informed the expansion:
+
+- [University of Helsinki Python Programming MOOC 2026](https://programming-26.mooc.fi/), especially [classes](https://programming-26.mooc.fi/part-8/) and [callbacks, generators and regular expressions](https://programming-26.mooc.fi/part-12/).
+- [Dataquest Data Analyst in Python](https://www.dataquest.io/path/data-analyst/): data quality, SQL analytics, probability and statistical reasoning.
+- [DataCamp Associate Data Scientist in Python](https://www.datacamp.com/tracks/associate-data-scientist-in-python): exploratory analysis, experimentation and predictive evaluation.
+
+Codey is not affiliated with these providers and does not reproduce their question banks or certifications. This addition introduces selected topics, not their full syllabi. Models use Python and NumPy; no new runtime packages are required.
 
 ## Browser Python and web projects
 
@@ -126,7 +136,7 @@ npm test
 npm run test:runner
 ```
 
-The account integration tests create real Better Auth sessions in disposable databases. Password sign-up is enabled only inside the test factory, never by the normal server entry point. Runtime tests execute all 173 reference solutions using the installed WebAssembly Python, including the Flask form workflow.
+The account integration tests create real Better Auth sessions in disposable databases. Password sign-up is enabled only inside the test factory, never by the normal server entry point. Runtime tests execute all 209 reference solutions using the installed WebAssembly Python, including the Flask form workflow. Curriculum tests verify blank editors, prerequisite links, unique IDs and separation of public briefs from answers.
 
 ## Troubleshooting
 

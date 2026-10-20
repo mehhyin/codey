@@ -20,8 +20,8 @@ def check_solution(task):
 if __name__ == '__main__':
     tasks = list(all_tasks().values())
     assert len(tasks) == len(set(t['id'] for t in tasks))
-    assert len(MODULES) == 19
-    assert len(tasks) == 173
+    assert len(MODULES) == 25
+    assert len(tasks) == 209
     assert all(len(m['tasks']) >= 3 and m['reference'] for m in MODULES)
     assert all(len(t['hints']) == 3 and t['checks'] for t in tasks)
     assert all('solution' not in t and 'explanation' not in t for m in public_course() for t in m['tasks'])
